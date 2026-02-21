@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0a0c10" />
+  <title>DataPulse — Analytics Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  
+</head>
+<body>
+ <link rel="stylesheet" href="css/style.css">
+<div class="app">
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+    <div class="sidebar-logo">
+      <span class="brand">DataPulse</span>
+      <small>Business Intelligence v2.0</small>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" onclick="showSection('upload')">
+        <span class="nav-icon">📁</span> Import Data
+      </button>
+      <button class="nav-item" id="nav-dashboard" onclick="showSection('dashboard')" disabled>
+        <span class="nav-icon">📊</span> Dashboard
+      </button>
+      <button class="nav-item" onclick="goToTable()">
+        <span class="nav-icon">🗃️</span> Data Table
+      </button>
+      <button class="nav-item" onclick="exportAll()">
+        <span class="nav-icon">⬇️</span> Export
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      Supported: CSV · JSON · TSV<br>
+      Recommended max: 50 MB<br>
+      © 2026 DataPulse | UnknownMeh
+    </div>
+  </aside>
+
+  <!-- Backdrop -->
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main" style="position:relative">
+
+    <!-- ══ TOPBAR ══ -->
+    <header class="topbar" role="banner">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="Toggle menu" aria-expanded="false">☰</button>
+        <h1 id="topbar-title">Import Data</h1>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" id="btn-reset" onclick="resetDashboard()" style="display:none">↺ Reset</button>
+        <button class="btn-theme" id="btn-theme" onclick="toggleThemePanel()" aria-label="Change theme" aria-haspopup="true" aria-expanded="false">
+          <span id="theme-icon">🌙</span> Theme
+        </button>
+        <button class="btn btn-primary" onclick="triggerUpload()">+ Upload</button>
+      </div>
+    </header>
+
+    <!-- Theme switcher panel -->
+    <div class="theme-panel" id="theme-panel" role="listbox" aria-label="Choose theme">
+      <div class="theme-panel-title">Choose Theme</div>
+      <button class="theme-option active" data-theme="dark"   onclick="applyTheme('dark',this)"   role="option"><span class="theme-dot" style="background:#00e5ff"></span> Midnight</button>
+      <button class="theme-option"        data-theme="light"  onclick="applyTheme('light',this)"  role="option"><span class="theme-dot" style="background:#0066ff"></span> Arctic Light</button>
+      <button class="theme-option"        data-theme="forest" onclick="applyTheme('forest',this)" role="option"><span class="theme-dot" style="background:#39ff8a"></span> Forest</button>
+      <button class="theme-option"        data-theme="ember"  onclick="applyTheme('ember',this)"  role="option"><span class="theme-dot" style="background:#ff8c00"></span> Ember</button>
+      <button class="theme-option"        data-theme="violet" onclick="applyTheme('violet',this)" role="option"><span class="theme-dot" style="background:#b47cff"></span> Violet Dusk</button>
+    </div>
+
+    <main class="content" role="main">
+
+      <!-- ══════════════════════════════════
+           UPLOAD SECTION
+      ══════════════════════════════════ -->
+      <section id="section-upload">
+        <div class="upload-hero anim">
+          <h2>Transform your data<br>into <span>Visual Intelligence</span></h2>
+          <p>Upload any structured data file. DataPulse auto-detects columns,<br class="br-hide" />generates smart charts and surfaces key insights instantly.</p>
+        </div>
+
+        <div class="drop-zone anim anim-1" id="drop-zone"
+             role="button" tabindex="0"
+             aria-label="Drop file here or click to browse"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave()"
+             ondrop="handleDrop(event)"
+             onclick="triggerUpload()"
+             onkeydown="if(event.key==='Enter'||event.key===' ')triggerUpload()">
+          <div class="drop-icon">📂</div>
+          <h3>Drop your file here</h3>
+          <p>or tap / click to browse from your device</p>
+          <button class="btn btn-primary" onclick="event.stopPropagation();triggerUpload()">Browse Files</button>
+          <input type="file" id="file-input" accept=".csv,.json,.tsv,.txt" onchange="handleFileInput(event)" />
+        </div>
+
+        <div class="upload-progress" id="upload-progress" role="status" aria-live="polite">
+          <div class="progress-label">
+            <span id="progress-text">Parsing file…</span>
+            <span id="progress-pct">0%</span>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+        </div>
+
+        <p style="max-width:min(720px,100%);margin:0 auto 13px;font-size:clamp(.65rem,.9vw,.74rem);color:var(--muted);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em;" class="anim anim-2">
+          Supported File Formats
+        </p>
+        <div class="formats-grid anim anim-2">
+          <div class="format-card">
+            <div class="format-icon">📄</div>
+            <h4>CSV</h4>
+            <p>Comma-Separated Values. Most common export from Excel, Google Sheets, databases and BI tools.</p>
+            <span class="format-badge">.csv</span>
+          </div>
+          <div class="format-card">
+            <div class="format-icon">🗂️</div>
+            <h4>JSON</h4>
+            <p>Array-of-objects format from REST APIs, web scrapers and app data exports.</p>
+            <span class="format-badge">.json</span>
+          </div>
+          <div class="format-card">
+            <div class="format-icon">📑</div>
+            <h4>TSV</h4>
+            <p>Tab-Separated Values. Common from bioinformatics tools and Excel tab-delimited exports.</p>
+            <span class="format-badge">.tsv</span>
+          </div>
+        </div>
+
+        <div class="sample-section anim anim-3">
+          <p>— or try a built-in sample dataset —</p>
+          <div class="sample-btns">
+            <button class="btn-sample" onclick="loadSample('sales')">📈 Monthly Sales</button>
+            <button class="btn-sample" onclick="loadSample('employees')">👥 HR Employees</button>
+            <button class="btn-sample" onclick="loadSample('ecommerce')">🛒 E-Commerce Orders</button>
+          </div>
+        </div>
+
+        <div class="info-box anim anim-4">
+          <h3>📋 Data Format Guide</h3>
+          <p>
+            <strong style="color:var(--text)">CSV / TSV:</strong> First row must be column headers. Each row is one record.<br>
+            Example: <code style="color:var(--accent)">Date,Product,Revenue,Units,Region</code><br><br>
+            <strong style="color:var(--text)">JSON:</strong> Provide a top-level array of objects with consistent keys.<br>
+            Example: <code style="color:var(--accent)">[{"date":"2024-01-01","revenue":12500,"region":"North"}]</code><br><br>
+            <strong style="color:var(--text)">Best practices:</strong> Include a date/time column for trend charts. At least one numeric column is needed for KPIs. Column names with spaces are supported. Keep files under ~100 k rows for optimal browser performance.
+          </p>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════
+           DASHBOARD SECTION
+      ══════════════════════════════════ -->
+      <section id="section-dashboard">
+
+        <div class="export-bar anim">
+          <span>Export:</span>
+          <button class="btn btn-ghost" onclick="exportCSV()">⬇ CSV</button>
+          <button class="btn btn-ghost" onclick="exportJSON()">⬇ JSON</button>
+          <button class="btn btn-ghost" onclick="exportChartPNG()">🖼 PNG</button>
+          <button class="btn btn-ghost" onclick="printDashboard()">🖨 Print</button>
+          <div style="flex:1;min-width:0"></div>
+          <span id="file-info"></span>
+        </div>
+
+        <div class="kpi-row" id="kpi-row"></div>
+
+        <!-- Primary charts (Trend + Distribution) -->
+        <div class="charts-primary">
+          <div class="chart-card anim anim-1">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Trend Analysis</div>
+                <div class="chart-subtitle" id="trend-subtitle">Numeric values over rows</div>
+              </div>
+              <div class="chart-actions">
+                <button class="btn-chart active" onclick="setChartType('trend','line',this)">Line</button>
+                <button class="btn-chart" onclick="setChartType('trend','bar',this)">Bar</button>
+                <button class="btn-chart" onclick="setChartType('trend','area',this)">Area</button>
+              </div>
+            </div>
+            <div class="chart-wrap"><canvas id="chart-trend"></canvas></div>
+          </div>
+
+          <div class="chart-card anim anim-2">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Distribution</div>
+                <div class="chart-subtitle" id="dist-subtitle">Category breakdown</div>
+              </div>
+              <div class="chart-actions">
+                <button class="btn-chart active" onclick="setChartType('dist','doughnut',this)">Donut</button>
+                <button class="btn-chart" onclick="setChartType('dist','pie',this)">Pie</button>
+              </div>
+            </div>
+            <div class="chart-wrap"><canvas id="chart-dist"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Secondary charts (Comparison + Scatter) -->
+        <div class="charts-secondary">
+          <div class="chart-card anim anim-3">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Comparison</div>
+                <div class="chart-subtitle">Top values by category</div>
+              </div>
+              <div class="chart-actions">
+                <button class="btn-chart active" onclick="setChartType('comp','bar',this)">V-Bar</button>
+                <button class="btn-chart" onclick="setChartType('comp','hbar',this)">H-Bar</button>
+              </div>
+            </div>
+            <div class="chart-wrap"><canvas id="chart-comp"></canvas></div>
+          </div>
+
+          <div class="chart-card anim anim-4">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Scatter / Correlation</div>
+                <div class="chart-subtitle" id="scatter-subtitle">Col 1 vs Col 2</div>
+              </div>
+            </div>
+            <div class="chart-wrap"><canvas id="chart-scatter"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="table-card" id="data-table-section">
+          <div class="table-header">
+            <div class="table-title">📋 Raw Data</div>
+            <input type="text" class="search-input" id="search-box"
+                   placeholder="🔍 Search…" oninput="filterTable(this.value)" aria-label="Search data" />
+          </div>
+          <div class="col-selector" id="col-selector"></div>
+          <div class="table-wrap" tabindex="0">
+            <table>
+              <thead id="table-head"></thead>
+              <tbody id="table-body"></tbody>
+            </table>
+          </div>
+          <div class="pagination">
+            <span id="pagination-info">No data loaded</span>
+            <div class="page-btns" id="page-btns"></div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<script src="js/script.js"></script>
+</body>
+</html>
